@@ -1,6 +1,7 @@
 package com.butovanton.chanelreaserch
 
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -10,16 +11,13 @@ import kotlin.system.measureTimeMillis
 suspend fun massiveRun(action: suspend () -> Unit) {
     val n = 100  // number of coroutines to launch
     val k = 1000 // times an action is repeated by each coroutine
-    val time = measureTimeMillis {
-        coroutineScope { // scope for coroutines
-            repeat(n) {
-                launch {
-                    repeat(k) { action() }
-                }
+    coroutineScope { // scope for coroutines
+        repeat(n) {
+            launch {
+                repeat(k) { action() }
             }
         }
     }
-    println("Completed ${n * k} actions in $time ms")
 }
 
 fun massiveRunShared(): Flow<Flow<Int>> = flow {
@@ -33,5 +31,17 @@ fun massiveRunShared(): Flow<Flow<Int>> = flow {
                 }
             )
         }
+    }
+}
+
+suspend fun Channel<Int>.chanelSender(max: Int, job: CompletableJob) {
+    for (oldValue in this) {
+        if (oldValue >= max) {
+            job.cancel()
+            return
+        }
+        val newValue = oldValue + 1
+        send(newValue)
+      //  println("Send $newValue")
     }
 }
